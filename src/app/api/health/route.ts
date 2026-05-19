@@ -41,13 +41,6 @@ export async function GET() {
     };
   }
 
-  checks.env_composio_api_key = {
-    status: process.env.COMPOSIO_API_KEY ? "ok" : "missing",
-  };
-  checks.env_anthropic_api_key = {
-    status: process.env.ANTHROPIC_API_KEY ? "ok" : "missing",
-  };
-
   const allSdksOk = ["composio_core", "composio_anthropic", "anthropic_sdk"]
     .every((k) => checks[k]?.status === "ok");
 
