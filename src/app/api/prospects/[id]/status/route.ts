@@ -8,7 +8,7 @@ const statusSchema = z.enum([
   'UNSUBSCRIBED', 'BOUNCED', 'NOT_FIT'
 ]);
 
-const idSchema = z.string().cuid();
+const idSchema = z.string();
 
 export async function PUT(
   request: Request,

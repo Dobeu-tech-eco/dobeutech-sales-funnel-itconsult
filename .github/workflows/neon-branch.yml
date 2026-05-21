@@ -44,12 +44,24 @@ jobs:
           RAW_BRANCH="preview/pr-${{ github.event.number }}-${{ needs.setup.outputs.branch }}"
           echo "TRUNC_BRANCH=${RAW_BRANCH:0:63}" >> "$GITHUB_ENV"
 
-      - name: Delete colliding preview branch
+      - name: Prune stale branches and delete colliding preview branch
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
         run: |
           npm i -g neonctl@v2
+          echo "Checking branch count and pruning if limit is reached"
+          BRANCH_COUNT=$(neonctl branches list --project-id $NEON_PROJECT_ID -o json | jq '. | length')
+          if [ "$BRANCH_COUNT" -ge 10 ]; then
+            echo "Branch limit (10) reached. Finding oldest preview branch to delete..."
+            OLDEST_BRANCH_ID=$(neonctl branches list --project-id $NEON_PROJECT_ID -o json | jq -r 'map(select(.name | startswith("preview/pr-"))) | sort_by(.created_at) | .[0].id')
+            if [ -n "$OLDEST_BRANCH_ID" ] && [ "$OLDEST_BRANCH_ID" != "null" ]; then
+              echo "Deleting oldest branch with ID: $OLDEST_BRANCH_ID"
+              neonctl branches delete $OLDEST_BRANCH_ID --project-id $NEON_PROJECT_ID || true
+            else
+              echo "No preview branches found to delete."
+            fi
+          fi
           echo "Deleting current preview branch if it already exists to prevent 422 errors"
           neonctl branches delete ${{ env.TRUNC_BRANCH }} --project-id $NEON_PROJECT_ID || true
 
