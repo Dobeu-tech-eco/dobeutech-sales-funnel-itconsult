@@ -1,5 +1,14 @@
 import { NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
+import { z } from 'zod';
+
+const statusSchema = z.enum([
+  'DISCOVERED', 'ENRICHED', 'QUEUED', 'CONTACTED', 'REPLIED',
+  'SURVEY_SENT', 'SURVEY_COMPLETE', 'MEETING_BOOKED', 'CLIENT',
+  'UNSUBSCRIBED', 'BOUNCED', 'NOT_FIT'
+]);
+
+const idSchema = z.string().cuid();
 
 export async function PUT(
   request: Request,
@@ -7,11 +16,20 @@ export async function PUT(
 ) {
   try {
     const params = await props.params;
+
+    // Validate ID
+    const idResult = idSchema.safeParse(params.id);
+    if (!idResult.success) {
+      return NextResponse.json({ error: 'Invalid prospect ID format' }, { status: 400 });
+    }
+
     const body = await request.json();
     const { status } = body;
 
-    if (!status) {
-      return NextResponse.json({ error: 'Status is required' }, { status: 400 });
+    // Validate Status
+    const statusResult = statusSchema.safeParse(status);
+    if (!statusResult.success) {
+      return NextResponse.json({ error: 'Invalid status provided' }, { status: 400 });
     }
 
     const dbUrl = process.env.DATABASE_URL;
