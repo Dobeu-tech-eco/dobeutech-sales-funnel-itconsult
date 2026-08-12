@@ -28,6 +28,7 @@ jobs:
         run: npm install -g @datadog/datadog-ci
 
       - name: Tag CI Pipeline
+        continue-on-error: true
         env:
           DATADOG_API_KEY: ${{ secrets.DD_API_KEY }}
           DD_ENV: ci
@@ -37,6 +38,10 @@ jobs:
           DD_GIT_COMMIT_SHA: ${{ github.sha }}
           DD_GIT_BRANCH: ${{ github.ref_name }}
         run: |
+          if [ -z "$DATADOG_API_KEY" ]; then
+            echo "DD_API_KEY secret not set — skipping Datadog CI tagging"
+            exit 0
+          fi
           echo "Datadog CI Visibility active for ${{ github.repository }}"
           echo "Branch: ${{ github.ref_name }}"
           echo "Commit: ${{ github.sha }}"
