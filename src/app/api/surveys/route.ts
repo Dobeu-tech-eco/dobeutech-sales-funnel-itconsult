@@ -16,11 +16,13 @@ export async function GET(request: Request) {
       }
     }
 
+    const MAX_OFFSET = 10_000;
+
     let offset = 0;
     if (offsetParam) {
       const parsedOffset = parseInt(offsetParam, 10);
       if (!isNaN(parsedOffset) && parsedOffset >= 0) {
-        offset = parsedOffset;
+        offset = Math.min(parsedOffset, MAX_OFFSET);
       }
     }
 
