@@ -51,18 +51,24 @@ jobs:
         run: |
           npm i -g neonctl@v2
 
-          # Delete oldest preview branch if 10-branch limit is reached
-          BRANCH_COUNT=$(neonctl branches list --project-id $NEON_PROJECT_ID -o json | jq '. | length')
-          if [ "$BRANCH_COUNT" -ge 10 ]; then
-            echo "10-branch limit reached. Deleting oldest preview branch..."
-            OLDEST_BRANCH_ID=$(neonctl branches list --project-id $NEON_PROJECT_ID -o json | jq -r 'map(select(.name | startswith("preview/pr-"))) | sort_by(.created_at) | .[0].id')
-            if [ "$OLDEST_BRANCH_ID" != "null" ] && [ -n "$OLDEST_BRANCH_ID" ]; then
-              neonctl branches delete $OLDEST_BRANCH_ID --project-id $NEON_PROJECT_ID || true
-            fi
+          BRANCHES_JSON=$(neonctl branches list --project-id "$NEON_PROJECT_ID" -o json)
+
+          # Delete current preview branch if it already exists (neonctl expects branch IDs)
+          COLLIDING_ID=$(echo "$BRANCHES_JSON" | jq -r --arg name "${{ env.TRUNC_BRANCH }}" 'map(select(.name == $name)) | .[0].id // empty')
+          if [ -n "$COLLIDING_ID" ]; then
+            neonctl branches delete "$COLLIDING_ID" --project-id "$NEON_PROJECT_ID" || true
+            BRANCHES_JSON=$(neonctl branches list --project-id "$NEON_PROJECT_ID" -o json)
           fi
 
-          echo "Deleting current preview branch if it already exists to prevent 422 errors"
-          neonctl branches delete ${{ env.TRUNC_BRANCH }} --project-id $NEON_PROJECT_ID || true
+          # Prune oldest preview branches until there's room under the 10-branch limit
+          BRANCH_COUNT=$(echo "$BRANCHES_JSON" | jq 'length')
+          if [ "$BRANCH_COUNT" -ge 10 ]; then
+            EXCESS=$((BRANCH_COUNT - 9))
+            echo "10-branch limit reached ($BRANCH_COUNT). Deleting $EXCESS oldest preview branch(es)..."
+            echo "$BRANCHES_JSON" | jq -r --argjson excess "$EXCESS" 'map(select(.name | startswith("preview/pr-"))) | sort_by(.created_at) | .[0:$excess] | .[].id' | while read -r id; do
+              [ -n "$id" ] && neonctl branches delete "$id" --project-id "$NEON_PROJECT_ID" || true
+            done
+          fi
 
       - name: Create Neon Branch
         id: create_neon_branch
