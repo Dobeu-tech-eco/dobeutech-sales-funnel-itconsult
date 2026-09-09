@@ -18,7 +18,12 @@
 ## Authentication
 
 - All dashboard/admin pages must be protected by authentication middleware.
-- Add `src/middleware.ts` with route matchers before exposing any sensitive pages.
+- `src/middleware.ts` gates `/api/prospects*`, `/api/weekly*`, and `/api/surveys*`. Any new
+  route serving prospect, survey, or other PII must be added to its `config.matcher`.
+- Callers authenticate with `Authorization: Bearer $PROSPECTS_API_KEY`. Generate the key with
+  `openssl rand -hex 32` and set it per environment; never prefix it with `NEXT_PUBLIC_`.
+- The middleware fails closed: if `PROSPECTS_API_KEY` is unset the gated routes return 503
+  rather than serving data.
 - The `/api/health` endpoint suppresses env var details in production.
 
 ## PII and Prospect Data
