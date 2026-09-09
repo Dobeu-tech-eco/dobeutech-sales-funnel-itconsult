@@ -161,7 +161,8 @@ prompt/
 *-credentials.*
 *-secrets.*
 *-hit-list.*
-*-batch-*.json
+*-batch-*
+docs/prospects-*
 !package.json
 !package-lock.json
 !tsconfig.json
